@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Latitude DTF Ops Cockpit // Gestão Operacional de Estamparia DTF</title>
+  <meta name="description" content="Cockpit B2B fechado para automação de pré-impressão gráfica DTF, montagem de rolo de 58cm com auto-nesting, precificação por cm² e controle de prensagem térmica.">
+
+  <!-- Fontes Modernas de Alta Precisão (Outfit & JetBrains Mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Estilos da Aplicação -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/modules.css">
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- SIDEBAR LATERAL NAVEGACIONAL (ESTILO ADOBE / FIGMA) -->
+    <aside class="sidebar" id="appSidebar">
+      <button type="button" class="sidebar-collapse-btn" id="btnSidebarCollapse" title="Recolher / expandir menu (Ctrl+B)" aria-label="Recolher menu lateral">‹</button>
+      <div class="sidebar-header">
+        <div class="brand-icon">LT</div>
+        <div class="brand-text">
+          <h1>LATITUDE DTF</h1>
+          <p>OPS COCKPIT B2B • v3.4</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">Core de Produção</div>
+        
+        <div class="nav-item active" data-tab="module-image-engine" id="navItemImageEngine" title="1. Tratamento Gráfico">
+          <span class="icon">📐</span>
+          <span class="nav-label">1. Tratamento Gráfico</span>
+          <span class="item-badge">300 DPI</span>
+        </div>
+
+        <div class="nav-item" data-tab="module-gang-sheet" id="navItemGangSheet" title="2. Montador de Rolo">
+          <span class="icon">🖨️</span>
+          <span class="nav-label">2. Montador de Rolo</span>
+          <span class="item-badge" id="sidebarRollBadge">58 cm</span>
+        </div>
+
+        <div class="nav-section-title">Finanças & Operação</div>
+
+        <div class="nav-item" data-tab="module-pricing" id="navItemPricing" title="3. Precificação & Custos">
+          <span class="icon">💰</span>
+          <span class="nav-label">3. Precificação & Custos</span>
+          <span class="item-badge">Markup</span>
+        </div>
+
+        <div class="nav-item" data-tab="module-production" id="navItemProduction" title="4. Prensa & Logística">
+          <span class="icon">🔥</span>
+          <span class="nav-label">4. Prensa & Logística</span>
+          <span class="item-badge">Kanban</span>
+        </div>
+
+        <div class="nav-section-title">Crescimento & Vendas</div>
+
+        <div class="nav-item" data-tab="module-marketing" id="navItemMarketing" title="5. Marketing & IA">
+          <span class="icon">🚀</span>
+          <span class="nav-label">5. Marketing & IA</span>
+          <span class="item-badge">Vídeo IA</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="server-status-card">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <span style="font-weight: 600; color: var(--text-primary);"><span class="status-dot online"></span>Engine Gráfica</span>
+            <span class="badge badge-green">Conectado</span>
+          </div>
+          <div style="color: var(--text-muted); font-size: 10px;">
+            Gráfica Terceirizada: 58 cm útil<br>
+            Custo Base: R$ 60,00 / metro linear
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ÁREA PRINCIPAL DA WORKSTATION -->
+    <div class="main-wrapper">
+      
+      <!-- HEADER OPERACIONAL COM MÉTRICAS EM TEMPO REAL -->
+      <header class="top-header">
+        <div class="metrics-strip">
+          <div class="metric-pill">
+            <span class="label">Boca Plotter:</span>
+            <span class="value highlight" id="headerPlotterMouthDisplay">58.0 cm</span>
+          </div>
+          <div class="metric-pill">
+            <span class="label">Metro Linear:</span>
+            <span class="value">R$ 60,00</span>
+          </div>
+          <div class="metric-pill">
+            <span class="label">Custo Base:</span>
+            <span class="value highlight" id="metricCm2Cost">R$ 0,01034 / cm²</span>
+          </div>
+          <div class="metric-pill">
+            <span class="label">Fila Ativa:</span>
+            <span class="value" id="rollQueueCount">4 itens</span>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('navItemGangSheet').click()" style="white-space: nowrap;">
+            🖨️ Ir para Rolo (<span id="headerSmallPlotterWidth">58cm</span>)
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="window.gangSheetService.exportForPrintShop('PNG')" style="white-space: nowrap;">
+            ⚡ Exportar Rolo
+          </button>
+        </div>
+      </header>
+
+      <!-- CONTEÚDO DOS MÓDULOS -->
+      <main class="module-content">
+
+        <!-- ================================================================ -->
+        <!-- MÓDULO 1: TRATAMENTO GRÁFICO (ENGINE DE IMAGEM 300 DPI)          -->
+        <!-- ================================================================ -->
+        <section class="module-pane active" id="module-image-engine">
+          <div class="image-studio">
+            
+            <!-- VIEWPORT DO CANVAS -->
+            <div class="canvas-viewport-box">
+              <div class="viewport-toolbar responsive-toolbar">
+                <div class="toolbar-top-row">
+                  <div class="toolbar-group">
+                    <span style="font-weight: 700; font-size: 13px; color: var(--text-primary); white-space: nowrap;">WORKBENCH DE PRÉ-IMPRESSÃO</span>
+                    <span class="badge badge-cyan" id="topbarDpiBadge">600 DPI NATIVO</span>
+                    <span class="active-filename-badge font-mono" id="activeImageBadge" title="Imagem Ativa em Edição">
+                      <span style="color: var(--accent-cyan); margin-right: 4px;">🖼️</span><span id="activeImageFilename">Nenhuma imagem carregada</span>
+                    </span>
+                  </div>
+                  <div class="toolbar-actions">
+                    <button class="btn btn-accent btn-sm" id="btnToggleCopilotPanel" onclick="window.aiCopilotService.togglePanel()" title="Terminal Copilot IA ao lado do Canvas">
+                      🤖 Copilot IA
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="btnToggleCanvasFocus" onclick="window.imageEngineService.toggleFocusMode()" title="Expandir área do Canvas na tela inteira">
+                      ⛶ Expandir Tela
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="window.imageEngineService.openQuickMockupModal()" title="Ver como fica na camiseta">
+                      👕 Ver no Mockup
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="window.imageEngineService.clearActiveArtwork()" title="Excluir ou descarregar esta arte da tela" style="color: var(--accent-red); border-color: rgba(239, 68, 68, 0.35);">
+                      🗑️ Excluir Imagem
+                    </button>
+                    <label class="btn btn-primary btn-sm" style="cursor: pointer; gap: 6px; white-space: nowrap;">
+                      📁 Carregar Arte
+                      <input type="file" id="imageFileInput" accept="image/*" multiple style="display: none;">
+                    </label>
+                  </div>
+                </div>
+
+                <div class="toolbar-bottom-row">
+                  <span class="badge badge-purple" id="canvasRulerInfo">GRADE: GG | 32 × 42 CM | 7559 × 9921 PX (600 DPI) | ÁREA: 1344 CM² | CUSTO DTF: R$ 13.90</span>
+                  
+                  <div class="export-dropdown-group">
+                    <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Baixar Esta Arte:</span>
+                    <button class="btn btn-secondary btn-sm" onclick="window.imageEngineService.exportSingleArtwork('PNG')" title="Baixar PNG transparente">💾 PNG</button>
+                    <button class="btn btn-secondary btn-sm" onclick="window.imageEngineService.exportSingleArtwork('TIFF')" title="Baixar TIFF CMYK/RGB em alta resolução">TIFF</button>
+                    <button class="btn btn-secondary btn-sm" onclick="window.imageEngineService.exportSingleArtwork('PDF')" title="Baixar PDF vetorial calibrado em cm">PDF</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- FAIXA DE CONTROLE DE VISUALIZAÇÃO: TECIDO & CENTRALIZAÇÃO (NÃO COBRE A IMAGEM) -->
+              <div class="workbench-substrip">
+                <div class="substrip-left">
+                  <span class="substrip-label">👕 Simular Tecido:</span>
+                  <div class="fabric-sim-btn-group">
+                    <button class="sim-fabric-btn active" data-bg="checkerboard" onclick="window.imageEngineService.setCanvasBackground('checkerboard')" title="Transparência PNG pura">
+                      <span class="sim-swatch swatch-check"></span> <span>Transparente</span>
+                    </button>
+                    <button class="sim-fabric-btn" data-bg="black" onclick="window.imageEngineService.setCanvasBackground('black')" title="Camiseta Preta (Visualizar Knockout Toque Zero)">
+                      <span class="sim-swatch" style="background: #111317; border: 1px solid #333;"></span> <span>Preta</span>
+                    </button>
+                    <button class="sim-fabric-btn" data-bg="white" onclick="window.imageEngineService.setCanvasBackground('white')" title="Camiseta Branca">
+                      <span class="sim-swatch" style="background: #f7f8fa; border: 1px solid #ccc;"></span> <span>Branca</span>
+                    </button>
+                    <button class="sim-fabric-btn" data-bg="gray" onclick="window.imageEngineService.setCanvasBackground('gray')" title="Cinza Mescla">
+                      <span class="sim-swatch" style="background: #6c7380; border: 1px solid #555;"></span> <span>Cinza</span>
+                    </button>
+                    <button class="sim-fabric-btn" data-bg="red" onclick="window.imageEngineService.setCanvasBackground('red')" title="Vermelha Carmim">
+                      <span class="sim-swatch" style="background: #851522; border: 1px solid #5c0e18;"></span> <span>Vermelha</span>
+                    </button>
+                    <button class="sim-fabric-btn" data-bg="offwhite" onclick="window.imageEngineService.setCanvasBackground('offwhite')" title="Off-White Bege">
+                      <span class="sim-swatch" style="background: #e8e2d5; border: 1px solid #bbb;"></span> <span>Off-White</span>
+                    </button>
+                  </div>
+                  <span class="fabric-active-indicator font-mono" id="canvasBgModeLabel">Transparência PNG (Xadrez)</span>
+                </div>
+
+                <div class="substrip-right">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSubstripCrop" onclick="window.imageEngineService.toggleCropMode()" title="Cortar imagem: recorte livre ou proporção fixa com retângulo interativo [Atalho: X]">
+                    ✂️ Cortar Imagem
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSubstripShirtSim" onclick="window.imageEngineService.toggleShirtSimulation()" title="Simular estampa na medida exata da camiseta selecionada do fornecedor [Medidas Reais em cm]">
+                    👕 Molde Real da Camisa
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnSubstripWand" onclick="window.imageEngineService.toggleMagicWand()" title="Ativar Varinha Mágica: clique sobre qualquer área preta ou fundo indesejado para apagar [Atalho: W]">
+                    🪄 Varinha Mágica
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.cleanArtworkEdges(1)" title="Eliminar halos escuros e restos de preto nas bordas (Choke 1px + De-fringe)">
+                    ✂️ Limpar Bordas
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.trimActiveArtworkTransparency()" title="Aparar margens transparentes vazias para que a estampa corresponda 100% à arte visível">
+                    ✂️ Aparar Transparência
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.undoLastAction()" title="Desfazer última alteração [Ctrl+Z]">
+                    ↺ Desfazer
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.centerArtwork(false)" title="Trazer a estampa exatamente para o centro do Canvas (Atalho: C)">
+                    🎯 Trazer para o Centro
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.centerArtwork(true)" title="Ajustar tamanho da imagem para caber na tela (Atalho: F)">
+                    ⛶ Ajustar à Tela
+                  </button>
+                </div>
+              </div>
+
+              <!-- LINHA PRINCIPAL DO WORKBENCH: CANVAS 100% DESOBSTRUÍDO + COPILOT IA -->
+              <div class="canvas-copilot-row">
+                <div class="viewport-canvas-center checkerboard-bg">
+                  <!-- Dropzone Overlay ao arrastar arquivos -->
+                  <div class="dropzone-overlay" id="canvasDropOverlay">
+                    <div class="dropzone-content">
+                      <div style="font-size: 38px; margin-bottom: 8px;">📥</div>
+                      <strong style="font-size: 16px; color: var(--accent-cyan);">Solte sua imagem aqui</strong>
+                      <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Suporte a múltiplos arquivos PNG, JPG, WebP e TIFF</p>
+                    </div>
+                  </div>
+
+                  <!-- BARRA FLUTUANTE DE CORTE INTERATIVO (CROP TOOL) -->
+                  <div class="crop-floating-bar" id="cropFloatingBar" style="display: none;">
+                    <div class="crop-bar-title font-mono">✂️ CORTE INTERATIVO</div>
+                    <div class="crop-bar-info font-mono" id="cropBarInfo">0 × 0 px</div>
+                    <div class="crop-bar-ratios">
+                      <button type="button" class="crop-ratio-btn active" id="btnCropAspectFree" data-ratio="free" onclick="window.imageEngineService.setCropAspect('free')">Livre</button>
+                      <button type="button" class="crop-ratio-btn" id="btnCropAspect11" data-ratio="1:1" onclick="window.imageEngineService.setCropAspect('1:1')">1:1 (Quadrado)</button>
+                      <button type="button" class="crop-ratio-btn" id="btnCropAspectOrig" data-ratio="original" onclick="window.imageEngineService.setCropAspect('original')">Original</button>
+                      <button type="button" class="crop-ratio-btn" onclick="window.imageEngineService.snapCropToArtwork()" title="Ajusta o retângulo aos limites exatos da estampa visível">Auto-Detectar</button>
+                    </div>
+                    <div class="crop-bar-actions">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.cancelCrop()" title="Cancelar corte (Esc)">✕ Cancelar</button>
+                      <button type="button" class="btn btn-primary btn-sm" onclick="window.imageEngineService.applyCrop()" title="Confirmar corte (Enter)">✓ Aplicar Corte</button>
+                    </div>
+                  </div>
+
+                  <!-- SUPER ZOOM NO CANVAS (ATÉ 1000% COM PAN DIRETO E CENTRALIZADOR) -->
+                  <div class="canvas-zoom-floating-bar">
+                    <button class="zoom-btn" onclick="window.imageEngineService.zoomOut()" title="Diminuir Zoom">−</button>
+                    <span class="zoom-level-text font-mono" id="canvasZoomDisplay">100%</span>
+                    <button class="zoom-btn" onclick="window.imageEngineService.zoomIn()" title="Aumentar Zoom">+</button>
+                    <button class="zoom-btn" onclick="window.imageEngineService.setZoomQuick(0.5)">50%</button>
+                    <button class="zoom-btn" onclick="window.imageEngineService.setZoomQuick(1.0)">100%</button>
+                    <button class="zoom-btn" onclick="window.imageEngineService.setZoomQuick(2.0)">200%</button>
+                    <button class="zoom-btn" onclick="window.imageEngineService.setZoomQuick(4.0)">400%</button>
+                    <button class="zoom-btn" onclick="window.imageEngineService.setZoomQuick(8.0)">800%</button>
+                    <button class="zoom-btn" onclick="window.imageEngineService.setZoomQuick(10.0)">1000%</button>
+                    <button class="zoom-btn zoom-btn-center" onclick="window.imageEngineService.centerArtwork(false)" title="Trazer imagem para o centro da tela (Atalho: C)">🎯 Centralizar</button>
+                    <button class="zoom-btn" onclick="window.imageEngineService.setZoomQuick('fit')" title="Ajustar à Tela (Atalho: F)">Ajustar</button>
+                  </div>
+
+                  <canvas id="artEngineCanvas"></canvas>
+                </div>
+
+                <!-- TERMINAL COPILOT IA (INTEGRADO AO LADO DO CANVAS) -->
+                <aside class="copilot-panel" id="copilotChatPanel">
+                  <div class="copilot-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="copilot-badge-icon">🤖</span>
+                      <div>
+                        <strong style="font-size: 12px; color: var(--text-primary);">Copilot DTF</strong>
+                        <div style="font-size: 9.5px; color: var(--text-muted); display: flex; align-items: center; gap: 4px;">
+                          <span class="status-dot online" id="copilotBackendStatus"></span>
+                          <span id="copilotBackendText">Engine Local / IA</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button type="button" class="btn-icon-subtle" id="btnCopilotToggleClose" title="Fechar painel do Copilot">✕</button>
+                  </div>
+
+                  <div class="copilot-messages" id="copilotMessagesList">
+                    <!-- Mensagens inseridas via aiCopilot.js -->
+                  </div>
+
+                  <div class="copilot-quick-prompts">
+                    <button type="button" class="copilot-chip" data-prompt="mudar a cor principal para vermelho">🎨 Mudar cor</button>
+                    <button type="button" class="copilot-chip" data-prompt="vetorizar estampa para svg">📐 Vetorizar</button>
+                    <button type="button" class="copilot-chip" data-prompt="remover fundo mantendo contorno">✨ Remover Fundo</button>
+                    <button type="button" class="copilot-chip" data-prompt="aplicar knockout para camisa preta">⚡ Knockout</button>
+                  </div>
+
+                  <div class="copilot-input-box">
+                    <textarea class="copilot-textarea" id="copilotChatInput" placeholder="Comando ou alteração (ex: 'mudar cor para azul', 'halftone 45 lpi')..." rows="2"></textarea>
+                    <button type="button" class="btn btn-accent btn-sm" id="btnCopilotSend">Enviar</button>
+                  </div>
+                  <div class="copilot-hint-info">Injeção oculta: <i>vector style, clean background, DTF printing</i></div>
+                </aside>
+              </div>
+            </div>
+
+            <!-- PAINEL LATERAL DE FERRAMENTAS GRÁFICAS -->
+            <div class="studio-tools-panel">
+              
+              <!-- Barra Superior de Controle do Painel -->
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; padding: 0 2px;">
+                <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Painel de Tratamento</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.toggleAllToolBlocks()" style="font-size: 10px; padding: 2px 8px;" title="Recolher ou expandir todas as sessões">
+                  ⇅ Alternar Todos
+                </button>
+              </div>
+
+              <!-- 1. Galeria das Imagens Carregadas pelo Usuário -->
+              <div class="tool-block" id="blockUploadedGallery">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>🖼️ Minhas Imagens Carregadas</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <label class="btn btn-secondary btn-sm" style="cursor: pointer; padding: 3px 8px; font-size: 10.5px;" title="Carregar nova imagem">
+                      ➕ Mais
+                      <input type="file" id="imageFileInputMulti" accept="image/*" multiple style="display: none;">
+                    </label>
+                  </div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+                  Clique em qualquer imagem para trazer para a tela imediatamente:
+                </div>
+                <div class="uploaded-gallery-list" id="uploadedGalleryContainer">
+                  <!-- Renderizado dinamicamente via imageEngine.js -->
+                </div>
+              </div>
+
+              <!-- 2. TRATAMENTO DE FUNDO & KNOCKOUT (Ações mais utilizadas no topo) -->
+              <div class="tool-block" id="blockBgKnockout">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>✨ Tratamento de Fundo & Arestas</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <span class="badge badge-cyan" style="font-size: 9px;">Toque & Cobertura</span>
+                  </div>
+                </div>
+                
+                <!-- 1. FERRAMENTA DE CORTE INTERATIVO (CROP TOOL) -->
+                <button type="button" class="btn btn-secondary" id="btnSidebarCrop" onclick="window.imageEngineService.toggleCropMode()" style="display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 9px 12px; gap: 2px; border-color: rgba(0, 240, 255, 0.4); margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <strong style="color: var(--accent-cyan); font-size: 12.5px;">✂️ Cortar Imagem (Crop Tool)</strong>
+                    <span class="badge badge-cyan" style="font-size: 9px;">Interativo [X]</span>
+                  </div>
+                  <span style="font-size: 10px; color: var(--text-muted); line-height: 1.3;">
+                    Enquadre a estampa pelas alças, elimine bordas ou sobras indesejadas e confirme com Enter.
+                  </span>
+                </button>
+
+                <!-- 2. REMOÇÃO DE FUNDO BRANCO (2 OPÇÕES DEDICADAS) -->
+                <div style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); margin-bottom: 6px; display: flex; align-items: center; gap: 5px;">
+                  <span>⚪ Remoção de Fundo Branco (2 Opções)</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+                  <!-- Opção 1: Remover Fundo Branco Suavizado -->
+                  <button class="btn btn-secondary" onclick="window.imageEngineService.removeWhiteBackgroundContour()" style="display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 9px 12px; gap: 2px; border-color: rgba(0, 240, 255, 0.35);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                      <strong style="color: var(--accent-cyan); font-size: 12px;">✨ Remover Fundo Branco (Bordas Suaves)</strong>
+                      <span class="badge badge-cyan" style="font-size: 8.5px;">Anti-Serrilhado</span>
+                    </div>
+                    <span style="font-size: 10px; color: var(--text-muted); line-height: 1.3;">
+                      Remove <b>apenas o fundo externo</b> conectado às bordas, mantendo <b>todos os brancos internos intactos</b> (olhos, dentes, letras). Suaviza as arestas sem halos brancos.
+                    </span>
+                  </button>
+
+                  <!-- Opção 2: Knockout para Camiseta Branca (Zerar Todo Branco) -->
+                  <button class="btn btn-secondary" onclick="window.imageEngineService.knockoutForWhiteShirt()" style="display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 9px 12px; gap: 2px; border-color: rgba(255, 255, 255, 0.35);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                      <strong style="color: #ffffff; font-size: 12px;">⚪ Knockout Camiseta Branca (Zerar Todo Branco)</strong>
+                      <span class="badge" style="background: rgba(255, 255, 255, 0.15); color: #fff; font-size: 8.5px;">Toque Zero</span>
+                    </div>
+                    <span style="font-size: 10px; color: var(--text-muted); line-height: 1.3;">
+                      Converte <b>todo o branco da estampa (externo e interno) em transparência suave</b>. Permite estampar em camiseta branca com toque zero e economia total de tinta.
+                    </span>
+                  </button>
+                </div>
+
+                <div class="form-group" style="margin-top: 6px; margin-bottom: 6px;">
+                  <div class="form-label">
+                    <span>Sensibilidade do Fundo Branco</span>
+                    <span id="whiteToleranceVal" class="font-mono" style="color: var(--accent-cyan); font-weight: 700;">35%</span>
+                  </div>
+                  <input type="range" id="sliderWhiteRemovalTolerance" min="5" max="85" value="35" oninput="window.imageEngineService.setWhiteTolerance(this.value)">
+                </div>
+
+                <div class="toggle-wrapper" style="margin-bottom: 6px;">
+                  <span style="font-size: 11px; color: var(--text-secondary);">Knockout de Branco Ativo no Canvas</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="toggleWhiteKnockout">
+                    <span class="slider-round"></span>
+                  </label>
+                </div>
+
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.applyPermanentWhiteKnockout()" style="width: 100%; margin-bottom: 12px; font-size: 10.5px; padding: 5px 8px;" title="Converte permanentemente todo o branco da imagem em transparência e apara as bordas">
+                  💾 Gravar Remoção Total de Branco no Arquivo
+                </button>
+
+                <!-- 3. OUTROS TRATAMENTOS DE FUNDO & CAMISETA PRETA -->
+                <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px;">
+                  <span>Outros Tratamentos de Fundo:</span>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <!-- Botão: Apenas Remover Fundo -->
+                  <button class="btn btn-secondary" onclick="window.imageEngineService.removeBackgroundOnly()" style="display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 9px 12px; gap: 2px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                      <strong style="color: var(--accent-cyan); font-size: 12.5px;">✨ Apenas Remover Fundo</strong>
+                      <span class="badge badge-cyan" style="font-size: 9px;">Anime / Mangá</span>
+                    </div>
+                    <span style="font-size: 10px; color: var(--text-muted); line-height: 1.3;">
+                      Remove o fundo mantendo <b>todo o preto e cores sólidas intactos</b> (cobertura total de tinta branca por baixo).
+                    </span>
+                  </button>
+
+                  <!-- Botão: Knockout para Camisa Preta -->
+                  <button class="btn btn-secondary" onclick="window.imageEngineService.knockoutForBlackShirt()" style="display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 9px 12px; gap: 2px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                      <strong style="color: var(--accent-amber); font-size: 12.5px;">⚡ Knockout para Camisa Preta</strong>
+                      <span class="badge badge-amber" style="font-size: 9px;">Economia & Toque Zero</span>
+                    </div>
+                    <span style="font-size: 10px; color: var(--text-muted); line-height: 1.3;">
+                      Remove o fundo e <b>zera tons pretos</b> para o tecido preto preencher o desenho.
+                    </span>
+                  </button>
+                </div>
+
+                <div class="form-group" style="margin-top: 10px; margin-bottom: 6px;">
+                  <div class="form-label">
+                    <span>Sensibilidade / Tolerância da Remoção</span>
+                    <span id="bgToleranceVal" class="font-mono" style="color: var(--accent-cyan); font-weight: 700;">35%</span>
+                  </div>
+                  <input type="range" id="sliderBgRemovalTolerance" min="5" max="90" value="35" oninput="window.imageEngineService.setBgTolerance(this.value)">
+                </div>
+
+                <div class="toggle-wrapper" style="margin-bottom: 10px;">
+                  <span style="font-size: 11px; color: var(--text-secondary);" id="labelIncludeIslands">Eliminar Ilhas / Vazados (Chifres, Letras)</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="toggleBgIncludeIslands" onchange="window.imageEngineService.setIncludeIslands(this.checked)">
+                    <span class="slider-round"></span>
+                  </label>
+                </div>
+
+                <!-- FERRAMENTAS DE PRECISÃO: VARINHA MÁGICA & TRATAMENTO DE BORDAS -->
+                <div style="background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                    <strong style="font-size: 11.5px; color: var(--accent-cyan); display: flex; align-items: center; gap: 5px;">
+                      🪄 Varinha Mágica & Bordas
+                    </strong>
+                    <span class="badge badge-cyan" style="font-size: 8.5px;">Clique & Apague</span>
+                  </div>
+                  
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnToggleMagicWand" onclick="window.imageEngineService.toggleMagicWand()" title="Ativar modo de clique para apagar [Atalho: W]" style="padding: 6px 4px; font-size: 11px;">
+                      🪄 Varinha (W)
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.undoLastAction()" title="Desfazer última remoção [Ctrl+Z]" style="padding: 6px 4px; font-size: 11px;">
+                      ↺ Desfazer (Ctrl+Z)
+                    </button>
+                  </div>
+
+                  <div style="font-size: 10px; color: var(--text-muted); margin-bottom: 6px;">
+                    Eliminar restos de preto e halos nas bordas (Choke):
+                  </div>
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.cleanArtworkEdges(1)" title="Encolhe a borda em 1px eliminando a linha preta residual" style="padding: 5px 3px; font-size: 10.5px;">
+                      ✂️ Limpar Bordas (1px)
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.cleanArtworkEdges(2)" title="Encolhimento mais forte de 2px para arestas muito sujas" style="padding: 5px 3px; font-size: 10.5px;">
+                      ✂️ Choke Forte (2px)
+                    </button>
+                  </div>
+                </div>
+
+                <div class="toggle-wrapper" style="margin-top: 6px;">
+                  <span style="font-size: 11.5px; color: var(--text-secondary);">Knockout Ativo no Canvas</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="toggleBlackKnockout">
+                    <span class="slider-round"></span>
+                  </label>
+                </div>
+
+                <div class="form-group" style="margin-top: 6px; margin-bottom: 4px;">
+                  <div class="form-label">
+                    <span>Sensibilidade / Tolerância do Preto (Knockout)</span>
+                    <span id="knockoutThresholdVal" class="font-mono" style="color: var(--accent-cyan); font-weight: 700;">28</span>
+                  </div>
+                  <input type="range" id="sliderKnockoutThreshold" min="5" max="80" value="28">
+                </div>
+
+                <!-- AUTO-APARAR BORDAS TRANSPARENTES -->
+                <button type="button" class="btn btn-secondary btn-sm" id="btnAutoTrimTransparency" onclick="window.imageEngineService.trimActiveArtworkTransparency()" style="width: 100%; margin-top: 6px; padding: 7px 10px; font-size: 11px; display: flex; align-items: center; justify-content: space-between; border-color: rgba(0, 240, 255, 0.4); background: rgba(0, 240, 255, 0.05);" title="Remove todas as sobras vazias ao redor da arte, calibrando a medida exata da estampa e economizando espaço no rolo">
+                  <span style="color: var(--accent-cyan); font-weight: 700;">✂️ Auto-Aparar Transparência</span>
+                  <span class="badge badge-cyan" id="badgeTrimStatus" style="font-size: 9px;">Calibrar Arte Real</span>
+                </button>
+
+                <button class="btn btn-secondary btn-sm" onclick="window.imageEngineService.restoreOriginalArtwork()" style="width: 100%; margin-top: 4px; font-size: 11px;">
+                  ↺ Restaurar Imagem Original
+                </button>
+              </div>
+
+              <!-- 3. DIMENSÕES & TAMANHO DA ESTAMPA (Focado exclusivamente nas medidas da impressão) -->
+              <div class="tool-block" id="blockPrintDimensions">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>📐 Dimensões da Estampa</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <span class="badge badge-cyan" id="shirtCurrentSpecsBadge">Tam M (28×37 cm)</span>
+                  </div>
+                </div>
+
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">
+                  Tamanhos padrão da estampa DTF:
+                </div>
+
+                <!-- Botões de Tamanhos Padrão da Estampa (Sem poluição de largura de camisa de fornecedor) -->
+                <div class="size-grid-buttons supplier-size-grid" id="supplierSizeGridButtons">
+                  <!-- Preenchido dinamicamente via renderSupplierSizeButtons() -->
+                </div>
+
+                <!-- Sliders e Inputs de Largura e Altura da Estampa em CM -->
+                <div class="form-group" style="margin-top: 10px; margin-bottom: 8px;">
+                  <div class="form-label">
+                    <span>Largura da Estampa (cm)</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <input type="number" id="inputPrintWidthCm" min="5" max="65" step="0.5" value="28.0" style="width: 58px; padding: 2px 4px; font-size: 11px; text-align: right; background: var(--bg-surface); border: 1px solid var(--border-medium); color: var(--accent-cyan); font-weight: 700; border-radius: 4px;" onchange="window.imageEngineService.setPrintDimensionCm(parseFloat(this.value), null, document.getElementById('chkLockAspectRatio').checked)">
+                      <span class="font-mono" style="font-size: 10.5px; color: var(--text-secondary);">cm</span>
+                    </div>
+                  </div>
+                  <input type="range" id="sliderPrintWidthCm" min="6" max="55" step="0.5" value="28.0" oninput="window.imageEngineService.setPrintDimensionCm(parseFloat(this.value), null, document.getElementById('chkLockAspectRatio').checked)">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 10px;">
+                  <div class="form-label">
+                    <span>Altura da Estampa (cm)</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <input type="number" id="inputPrintHeightCm" min="5" max="90" step="0.5" value="37.0" style="width: 58px; padding: 2px 4px; font-size: 11px; text-align: right; background: var(--bg-surface); border: 1px solid var(--border-medium); color: var(--accent-cyan); font-weight: 700; border-radius: 4px;" onchange="window.imageEngineService.setPrintDimensionCm(null, parseFloat(this.value), document.getElementById('chkLockAspectRatio').checked)">
+                      <span class="font-mono" style="font-size: 10.5px; color: var(--text-secondary);">cm</span>
+                    </div>
+                  </div>
+                  <input type="range" id="sliderPrintHeightCm" min="8" max="70" step="0.5" value="37.0" oninput="window.imageEngineService.setPrintDimensionCm(null, parseFloat(this.value), document.getElementById('chkLockAspectRatio').checked)">
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                  <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; color: var(--text-secondary);">
+                    <input type="checkbox" id="chkLockAspectRatio" checked onchange="DTFState.imageEngine.lockPrintAspectRatio = this.checked">
+                    <span>Manter Proporção Original</span>
+                  </label>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.setPrintDimensionCm(DTFState.getCurrentShirtSizeData().defaultPrintWidthCm, DTFState.getCurrentShirtSizeData().defaultPrintHeightCm)" style="font-size: 10px; padding: 2px 6px;">
+                    ↺ Padrão da Grade
+                  </button>
+                </div>
+
+                <!-- Medidor de Proporção no Tórax (Coverage Gauge) -->
+                <div class="shirt-coverage-meter" style="background: var(--bg-surface); padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); margin-bottom: 10px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-size: 10.5px; color: var(--text-secondary);">Cobertura do Tórax:</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="font-mono" id="shirtCoveragePctDisplay" style="font-size: 12px; font-weight: 700; color: var(--accent-cyan);">54%</span>
+                      <span class="badge badge-cyan" id="shirtCoverageFeedbackTag" style="font-size: 9px;">Proporção Padrão Ideal</span>
+                    </div>
+                  </div>
+                  <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden;">
+                    <div id="shirtCoverageProgressBar" style="width: 54%; height: 100%; background: var(--accent-cyan); transition: width 0.2s ease, background 0.2s ease;"></div>
+                  </div>
+                </div>
+
+                <!-- Presets Rápidos de Posicionamento -->
+                <div style="margin-bottom: 6px; font-size: 10.5px; color: var(--text-muted);">
+                  Posicionamento na Peça:
+                </div>
+                <div class="placement-presets-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.setShirtPlacement('chest')" style="font-size: 10.5px; padding: 5px;">
+                    🎯 Centro (4 Dedos)
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.setShirtPlacement('pocket')" style="font-size: 10.5px; padding: 5px;">
+                    👕 Bolso / Pocket
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.setShirtPlacement('sleeve')" style="font-size: 10.5px; padding: 5px;">
+                    💪 Manga Lateral
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="window.imageEngineService.setShirtPlacement('lower')" style="font-size: 10.5px; padding: 5px;">
+                    🏷️ Barra Inferior
+                  </button>
+                </div>
+              </div>
+
+              <!-- 4. RESOLUÇÃO & DPI (Alta Definição para DTF) -->
+              <div class="tool-block" id="blockResolutionDpi">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>🎯 Resolução & DPI Nativo</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <span class="badge badge-cyan" id="badgeCurrentDpi">600 DPI</span>
+                  </div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+                  Calibre a densidade de pontos da cabeça da impressora DTF:
+                </div>
+                <div class="dpi-preset-grid">
+                  <button class="dpi-btn" data-dpi="300">300 DPI<br><span style="font-size: 9px; opacity: 0.7;">Padrão</span></button>
+                  <button class="dpi-btn active" data-dpi="600">600 DPI<br><span style="font-size: 9px; opacity: 0.7;">Alta Def.</span></button>
+                  <button class="dpi-btn" data-dpi="720">720 DPI<br><span style="font-size: 9px; opacity: 0.7;">Epson HD</span></button>
+                  <button class="dpi-btn" data-dpi="1200">1200 DPI<br><span style="font-size: 9px; opacity: 0.7;">Ultra</span></button>
+                  <button class="dpi-btn" data-dpi="1440">1440 DPI<br><span style="font-size: 9px; opacity: 0.7;">i3200 Max</span></button>
+                  <button class="dpi-btn" data-dpi="2400">2400 DPI<br><span style="font-size: 9px; opacity: 0.7;">Extremo</span></button>
+                </div>
+                <div class="form-group" style="margin-top: 10px; margin-bottom: 4px;">
+                  <div class="form-label">
+                    <span>Ajuste Fino de DPI (150 a 4800 DPI)</span>
+                    <span class="font-mono" id="sliderDpiValueDisplay" style="color: var(--accent-cyan); font-weight: 700;">600 DPI</span>
+                  </div>
+                  <input type="range" id="sliderCustomDpi" min="150" max="4800" step="50" value="600">
+                </div>
+              </div>
+
+              <!-- 5. RESTAURAÇÃO E QUALIDADE IA (AI REDRAW & VETOR) -->
+              <div class="tool-block" id="blockQualityVector">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>⚡ Restauração & Qualidade (IA & Vetor)</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <span class="badge badge-green" style="font-size: 9px;">Alta Fidelidade</span>
+                  </div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+                  Refinamento para impressão nítida na prensa térmica:
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                  <button class="btn btn-secondary btn-sm" onclick="window.imageEngineService.vectorizeArtwork()" title="Converte bitmaps e logos em curvas SVG puras e escaláveis" style="padding: 8px 6px;">
+                    📐 Vetorizar (SVG)
+                  </button>
+                  <button class="btn btn-accent btn-sm" onclick="window.imageEngineService.aiRedraw()" title="Reconstrói arestas borradas e refina detalhes via IA" style="padding: 8px 6px;">
+                    🎨 Redesenho IA
+                  </button>
+                </div>
+
+                <!-- 1. Super-Nitidez (Unsharp Mask) -->
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <div class="form-label">
+                    <span>Super-Nitidez (Unsharp Mask)</span>
+                    <span id="valUnsharpDisplay" class="font-mono" style="color: var(--accent-cyan); font-weight: 700;">0%</span>
+                  </div>
+                  <input type="range" id="sliderUnsharpStrength" min="0" max="100" value="0" oninput="window.imageEngineService.setUnsharpStrength(this.value)">
+                </div>
+
+                <!-- 2. Remoção de Ruído JPEG (Denoise) -->
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <div class="form-label">
+                    <span>Anti-Ruído / Denoise JPEG</span>
+                    <span id="valDenoiseDisplay" class="font-mono" style="color: var(--accent-purple-light); font-weight: 700;">0%</span>
+                  </div>
+                  <input type="range" id="sliderDenoiseStrength" min="0" max="100" value="0" oninput="window.imageEngineService.setDenoiseStrength(this.value)">
+                </div>
+
+                <!-- 3. Realce de Contraste & Cores DTF -->
+                <div class="form-group" style="margin-bottom: 4px;">
+                  <div class="form-label">
+                    <span>Realce de Cores & Gama DTF</span>
+                    <span id="valVibranceDisplay" class="font-mono" style="color: var(--accent-amber); font-weight: 700;">+0%</span>
+                  </div>
+                  <input type="range" id="sliderVibranceBoost" min="0" max="50" value="0" oninput="window.imageEngineService.setVibranceBoost(this.value)">
+                </div>
+              </div>
+
+              <!-- 6. NOVO MOTOR HALFTONE (FIEL AO PHOTOSHOP) -->
+              <div class="tool-block" id="blockHalftone">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>🏁 Motor Halftone DTF (Photoshop)</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <span class="badge badge-purple" id="badgeHalftoneStatus" style="font-size: 9px;">Desativado</span>
+                  </div>
+                </div>
+                <div class="toggle-wrapper">
+                  <span style="font-size: 12px; color: var(--text-secondary);">Converter degradês em micropontos</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="toggleHalftone">
+                    <span class="slider-round"></span>
+                  </label>
+                </div>
+                <div style="font-size: 10.5px; color: var(--text-muted); margin: 6px 0 10px; line-height: 1.3;">
+                  Separação Lab: retícula aplicada <b>apenas em degradês e sombras</b>. Cores sólidas e contornos permanecem 100% nítidos sem perda de qualidade.
+                </div>
+
+                <!-- Controle 1: Frequência dos Pontos (Tamanho / LPI) -->
+                <div class="form-group" style="margin-bottom: 10px;">
+                  <div class="form-label">
+                    <span>1. Frequência dos Pontos (Tamanho)</span>
+                    <span id="halftoneLpiVal" class="font-mono" style="color: var(--accent-purple-light); font-weight: 700;">45 LPI</span>
+                  </div>
+                  <input type="range" id="sliderHalftoneLPI" min="10" max="100" value="45">
+                  <div id="halftonePitchInfo" style="font-size: 10px; color: var(--text-muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace;">
+                    Tamanho do microponto: ~0.56 mm (45 linhas/pol)
+                  </div>
+                </div>
+
+                <!-- Controle 2: Ângulo da Retícula -->
+                <div class="form-group" style="margin-bottom: 4px;">
+                  <div class="form-label">
+                    <span>2. Ângulo da Retícula</span>
+                    <span id="halftoneAngleVal" class="font-mono" style="color: var(--accent-cyan); font-weight: 700;">45°</span>
+                  </div>
+                  <input type="range" id="sliderHalftoneAngle" min="0" max="90" step="5" value="45">
+                </div>
+              </div>
+
+              <!-- 7. Cor da Camiseta Alvo e Custo Estimado -->
+              <div class="tool-block" id="blockShirtColorCost">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>👕 Tecido & Custo Estimado</span>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                  <label class="form-label">Cor da Camiseta Alvo</label>
+                  <select id="selectTargetShirtColor" class="form-input">
+                    <option value="Preta" selected>Camiseta Preta (Ativa Knockout)</option>
+                    <option value="Branca">Camiseta Branca</option>
+                    <option value="Cinza">Cinza Mescla</option>
+                    <option value="Off-White">Off-White / Bege</option>
+                    <option value="Vermelha">Vermelha / Colorida</option>
+                  </select>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 6px;">
+                  <span style="font-size: 12px; color: var(--text-muted);">Custo DTF Desta Peça:</span>
+                  <span class="badge badge-cyan" id="dtfPieceCostEstimate" style="font-size: 14px; font-weight: 800;">R$ 0,00</span>
+                </div>
+              </div>
+
+              <!-- Botão de Ação: Enviar ao Rolo -->
+              <button class="btn btn-primary" id="btnPushToGangSheet" style="padding: 12px; font-size: 14px; width: 100%;">
+                ➕ Adicionar ao Rolo (Módulo 2)
+              </button>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- ================================================================ -->
+        <!-- MÓDULO 2: MONTADOR DE ROLO (AUTO GANG SHEET COM BOCA DA PLOTTER) -->
+        <!-- ================================================================ -->
+        <section class="module-pane" id="module-gang-sheet">
+          <div class="gang-sheet-studio">
+            
+            <!-- VIEWPORT DO ROLO COM BOCA DA PLOTTER FLEXÍVEL -->
+            <div class="roll-viewport-wrapper">
+              <div class="viewport-toolbar">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                  <strong style="color: var(--text-primary); font-size: 13px;" id="rollMouthTitleDisplay">ROLO DTF: 58.0 CM (BOCA DA PLOTTER)</strong>
+                  <span class="badge badge-cyan" id="rollGapBadge">Folga: 0.3 cm</span>
+                  <span class="badge badge-green" id="rollUtilizationPct">92.4%</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <button class="btn btn-secondary btn-sm" id="btnRollRotate" title="Girar a arte selecionada 90° (R)">↻ Girar 90°</button>
+                  <button class="btn btn-secondary btn-sm" id="btnRollUndo" title="Desfazer (Ctrl+Z)">↶ Desfazer</button>
+                  <div class="roll-zoom-group">
+                    <button class="zoom-btn" id="btnRollZoomOut" title="Menos zoom (Ctrl + roda)">−</button>
+                    <span id="rollZoomLabel">100%</span>
+                    <button class="zoom-btn" id="btnRollZoomIn" title="Mais zoom (Ctrl + roda)">+</button>
+                    <button class="zoom-btn" id="btnRollZoomFit" title="Ajustar à largura">↔</button>
+                  </div>
+                  <button class="btn btn-secondary btn-sm" id="btnExportRollProject" onclick="window.gangSheetService.exportRollProject()" title="Exportar layout e artes deste rolo (.dtfroll / JSON) para continuar depois">
+                    💾 Salvar Projeto
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btnImportRollProject" onclick="window.gangSheetService.triggerImportRollProject()" title="Abrir projeto de rolo salvo anteriormente (.dtfroll)">
+                    📂 Abrir Projeto
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btnAutoTrimRollItems" onclick="window.gangSheetService.autoTrimAllItems()" title="Apara o fundo transparente de todas as artes do rolo, compactando a montagem e economizando filme DTF">
+                    ✂️ Aparar Fundo Transparente
+                  </button>
+                  <button class="btn btn-secondary btn-sm" id="btnRunAutoNesting" title="Reorganiza tudo automaticamente (opcional)">
+                    ⚡ Auto-Nesting
+                  </button>
+                  <button class="btn btn-accent btn-sm" id="btnToggleFillers">
+                    ✨ Preencher Sobras com Fillers
+                  </button>
+                </div>
+              </div>
+              <div class="roll-hint-bar">Arraste as artes livremente • <b>R</b> gira 90° • <b>Del</b> remove • setas ajustam (Shift = 1 cm) • <b>Alt</b> desliga o imã • Colisão ativa: uma arte nunca fica sobre outra</div>
+
+              <div class="roll-canvas-container">
+                <div class="roll-film-sheet">
+                  <!-- Régua Métrica Dinâmica com a Boca da Plotter -->
+                  <div class="roll-horizontal-ruler" id="rollRulerTicksContainer">
+                    <span>0 cm</span>
+                    <span>15 cm</span>
+                    <span>30 cm</span>
+                    <span>45 cm</span>
+                    <span>58.0 cm (Boca da Plotter)</span>
+                  </div>
+                  <canvas id="rollFilmCanvas"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- PAINEL LATERAL DO ROLO: BOCA DA PLOTTER, ESTAMPAS INTERNAS, ESTATÍSTICAS E EXPORTAÇÃO -->
+            <div class="roll-sidebar-tools">
+              
+              <!-- Barra Superior de Controle do Painel -->
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; padding: 0 2px;">
+                <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Painel do Rolo</span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.toggleAllToolBlocks()" style="font-size: 10px; padding: 2px 8px;" title="Recolher ou expandir todas as sessões">
+                  ⇅ Alternar Todos
+                </button>
+              </div>
+
+              <!-- 1. Ajuste da Boca da Plotter -->
+              <div class="tool-block" id="blockPlotterWidth">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>Boca da Plotter (Largura Útil)</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <span class="badge badge-cyan" id="badgeRollWidthDisplay">58.0 cm</span>
+                  </div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">
+                  Selecione a bobina suportada pela impressora (recalcula custos e empacotamento):
+                </div>
+                <div class="plotter-preset-grid">
+                  <button class="plotter-btn" data-width="30">30 cm<br><span style="font-size: 8.5px; opacity: 0.7;">A3 DTF</span></button>
+                  <button class="plotter-btn" data-width="42">42 cm<br><span style="font-size: 8.5px; opacity: 0.7;">Compacta</span></button>
+                  <button class="plotter-btn active" data-width="58">58 cm<br><span style="font-size: 8.5px; opacity: 0.7;">Padrão</span></button>
+                  <button class="plotter-btn" data-width="60">60 cm<br><span style="font-size: 8.5px; opacity: 0.7;">Epson SC</span></button>
+                  <button class="plotter-btn" data-width="70">70 cm<br><span style="font-size: 8.5px; opacity: 0.7;">Bobina 70</span></button>
+                  <button class="plotter-btn" data-width="120">120 cm<br><span style="font-size: 8.5px; opacity: 0.7;">Industrial</span></button>
+                </div>
+                <div class="form-group" style="margin-top: 10px; margin-bottom: 4px;">
+                  <div class="form-label">
+                    <span>Largura Customizada (cm)</span>
+                  </div>
+                  <input type="number" class="form-input" id="inputCustomPlotterWidth" value="58.0" min="20" max="160" step="1.0">
+                </div>
+              </div>
+
+              <!-- 2. ESTAMPAS INTERNAS DE GOLA (TAMANHOS PADRÃO - INSERÇÃO IMEDIATA) -->
+              <div class="tool-block" id="blockInternalTags">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>🏷️ Estampas Internas (Gola)</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <span class="badge badge-cyan" id="badgeInternalTagsStatus">Tamanhos Padrão</span>
+                  </div>
+                </div>
+                
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">
+                  Clique no tamanho para adicionar a etiqueta de gola direto no rolo:
+                </div>
+
+                <!-- Grade de Inserção Rápida no Rolo -->
+                <div class="internal-tags-grid">
+                  <button type="button" class="btn-internal-tag" onclick="window.gangSheetService.addInternalTagToRoll('PP')" title="Adicionar Estampa Interna Tam PP no Rolo">
+                    <span class="tag-size-letter">PP</span>
+                    <span class="tag-size-dim">6×7 cm</span>
+                  </button>
+                  <button type="button" class="btn-internal-tag" onclick="window.gangSheetService.addInternalTagToRoll('P')" title="Adicionar Estampa Interna Tam P no Rolo">
+                    <span class="tag-size-letter">P</span>
+                    <span class="tag-size-dim">6×7 cm</span>
+                  </button>
+                  <button type="button" class="btn-internal-tag" onclick="window.gangSheetService.addInternalTagToRoll('M')" title="Adicionar Estampa Interna Tam M no Rolo">
+                    <span class="tag-size-letter">M</span>
+                    <span class="tag-size-dim">6×7 cm</span>
+                  </button>
+                  <button type="button" class="btn-internal-tag" onclick="window.gangSheetService.addInternalTagToRoll('G')" title="Adicionar Estampa Interna Tam G no Rolo">
+                    <span class="tag-size-letter">G</span>
+                    <span class="tag-size-dim">6×7 cm</span>
+                  </button>
+                  <button type="button" class="btn-internal-tag" onclick="window.gangSheetService.addInternalTagToRoll('GG')" title="Adicionar Estampa Interna Tam GG no Rolo">
+                    <span class="tag-size-letter">GG</span>
+                    <span class="tag-size-dim">6×7 cm</span>
+                  </button>
+                  <button type="button" class="btn-internal-tag" onclick="window.gangSheetService.addInternalTagToRoll('XG')" title="Adicionar Estampa Interna Tam XG no Rolo">
+                    <span class="tag-size-letter">XG</span>
+                    <span class="tag-size-dim">6×7 cm</span>
+                  </button>
+                </div>
+
+                <!-- Botão de Grade Completa -->
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.gangSheetService.addAllInternalTagsToRoll()" style="width: 100%; margin-top: 8px; margin-bottom: 8px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                  <span>➕ Inserir Grade Completa (PP ao XG)</span>
+                </button>
+
+                <!-- Painel de Gerenciamento da Imagem da Estampa Interna -->
+                <div class="internal-tag-config-box" style="margin-top: 8px; padding: 10px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <strong style="font-size: 11px; color: var(--text-primary);">Configurar Arte da Etiqueta:</strong>
+                    <span class="badge badge-green" id="badgeTagBgRemoved" style="font-size: 8.5px;">Fundo Transparente</span>
+                  </div>
+
+                  <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                    <div id="internalTagThumbPreview" class="internal-tag-thumb-preview" style="background: #0f172a; border-radius: 4px; padding: 2px;">
+                      <span style="font-size: 20px;">🏷️</span>
+                    </div>
+                    <div style="flex: 1; overflow: hidden;">
+                      <div id="internalTagNameDisplay" style="font-size: 11px; font-weight: 600; color: var(--accent-cyan); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                        ⭐ Etiqueta Oficial Latitude Store
+                      </div>
+                      <div style="font-size: 9.5px; color: var(--text-muted);">
+                        Medida padrão: <span id="labelTagDims">6.0 × 7.0 cm</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btnRestoreOfficialTag" onclick="window.gangSheetService.restoreOfficialLatitudeTag()" style="font-size: 10px; padding: 5px; color: var(--accent-cyan);" title="Restaura o template oficial da marca Latitude com troca automática de tamanhos">
+                      ⭐ Oficial Latitude
+                    </button>
+                    <label class="btn btn-secondary btn-sm" style="cursor: pointer; font-size: 10px; padding: 5px; text-align: center;">
+                      📁 Trocar Arte
+                      <input type="file" id="inputInternalTagFile" accept="image/*" style="display: none;" onchange="window.gangSheetService.handleInternalTagUpload(this.files[0])">
+                    </label>
+                  </div>
+
+                  <!-- Ajuste da Medida Padrão da Etiqueta -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 10.5px;">
+                    <span style="color: var(--text-secondary);">Medida da Etiqueta:</span>
+                    <div style="display: flex; align-items: center; gap: 4px;">
+                      <input type="number" id="inputInternalTagWidth" value="6.0" min="3" max="15" step="0.5" style="width: 46px; padding: 2px 4px; font-size: 10.5px; text-align: right; background: var(--bg-surface-elevated); border: 1px solid var(--border-medium); color: var(--accent-cyan); font-weight: 700; border-radius: 4px;" onchange="window.gangSheetService.setInternalTagDimensions(parseFloat(this.value), parseFloat(document.getElementById('inputInternalTagHeight').value))">
+                      <span>×</span>
+                      <input type="number" id="inputInternalTagHeight" value="7.0" min="3" max="15" step="0.5" style="width: 46px; padding: 2px 4px; font-size: 10.5px; text-align: right; background: var(--bg-surface-elevated); border: 1px solid var(--border-medium); color: var(--accent-cyan); font-weight: 700; border-radius: 4px;" onchange="window.gangSheetService.setInternalTagDimensions(parseFloat(document.getElementById('inputInternalTagWidth').value), parseFloat(this.value))">
+                      <span style="color: var(--text-muted); font-size: 9.5px;">cm</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Estatísticas de Ocupação e Custo -->
+              <div class="metric-stat-card" id="blockRollStats">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 12px; color: var(--text-muted);">Comprimento Linear</span>
+                  <span class="badge badge-cyan" id="rollTotalLength">0.0 cm (0.00 m)</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                  <span style="font-size: 12px; color: var(--text-muted);">Custo Total da Gráfica</span>
+                  <span style="font-size: 16px; font-weight: 800; color: var(--accent-cyan);" id="rollTotalCost">R$ 0,00</span>
+                </div>
+                <div style="margin-top: 8px;">
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary);">
+                    <span>Aproveitamento do Filme</span>
+                    <span>Meta: >90%</span>
+                  </div>
+                  <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="rollProgressFill" style="width: 0%;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4. Opções de Corte -->
+              <div class="tool-block" id="blockCutGuides">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>Guias de Corte & Espaçamento</span>
+                  </div>
+                </div>
+                <div class="toggle-wrapper">
+                  <span style="font-size: 12px; color: var(--text-secondary);">Exibir / Ocultar Guias de Corte</span>
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="toggleShowCutMarks" checked>
+                    <span class="slider-round"></span>
+                  </label>
+                </div>
+                <div style="font-size: 10.5px; color: var(--text-muted); margin: 6px 0 10px;">
+                  Linhas finas de 0,75 px rente à arte. Oculte para encostar as artes sem ruído visual (a exportação segue este interruptor).
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <div class="form-label"><span>Folga mínima entre artes (cm)</span></div>
+                  <input type="number" class="form-input" id="inputRollGapCm" value="0.3" min="0" max="5" step="0.1">
+                </div>
+              </div>
+
+              <!-- 5. Lista de Artes Alocadas no Rolo -->
+              <div class="tool-block" id="blockRollItemsQueue" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>Itens Posicionados no Rolo</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <span class="badge badge-purple" id="rollAllocatedCount">0</span>
+                  </div>
+                </div>
+                <div class="roll-queue-list" id="rollItemsQueueContainer">
+                  <!-- Renderizado dinamicamente via gangSheetNesting.js -->
+                </div>
+              </div>
+
+              <!-- 6. Exportação do Rolo em PNG, TIFF ou PDF -->
+              <div class="tool-block" id="blockExportRoll">
+                <div class="tool-block-header">
+                  <div class="tool-block-header-left">
+                    <span class="tool-block-chevron">▾</span>
+                    <span>Exportar Rolo Completo</span>
+                  </div>
+                  <div class="tool-block-header-right">
+                    <span class="badge badge-green">Gráfica</span>
+                  </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+                  <button class="btn btn-primary btn-sm" onclick="window.gangSheetService.exportForPrintShop('PNG')">💾 PNG</button>
+                  <button class="btn btn-secondary btn-sm" onclick="window.gangSheetService.exportForPrintShop('TIFF')">TIFF</button>
+                  <button class="btn btn-secondary btn-sm" onclick="window.gangSheetService.exportForPrintShop('PDF')">PDF</button>
+                </div>
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-subtle); display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                  <button class="btn btn-secondary btn-sm" onclick="window.gangSheetService.exportRollProject()" title="Exportar arquivo de projeto .dtfroll">💾 Salvar Projeto</button>
+                  <button class="btn btn-secondary btn-sm" onclick="window.gangSheetService.triggerImportRollProject()" title="Importar arquivo de projeto .dtfroll">📂 Abrir Projeto</button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ================================================================ -->
+        <!-- MÓDULO 3: PRECIFICAÇÃO E CUSTOS (CPV & MARKUP DIVISOR)          -->
+        <!-- ================================================================ -->
+        <section class="module-pane" id="module-pricing">
+          <div class="pricing-matrix-container">
+            
+            <!-- CARD 1: COMPOSIÇÃO DETALHADA DO CPV -->
+            <div class="cost-breakdown-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="font-size: 16px; font-weight: 700; color: var(--text-primary);">COMPOSIÇÃO DO CUSTO UNITÁRIO (CPV)</h2>
+                <span class="badge badge-cyan">Estampa Tamanho M (28×35 cm)</span>
+              </div>
+
+              <div class="cost-row">
+                <span style="color: var(--text-secondary);">Camiseta Lisa (Algodão 30.1 Penteado)</span>
+                <span class="font-mono" id="costBlankShirt">R$ 22,50</span>
+              </div>
+
+              <div class="cost-row">
+                <div>
+                  <span style="color: var(--text-secondary);">Fração DTF (980 cm² @ R$ 60/m)</span>
+                  <div style="font-size: 10.5px; color: var(--text-muted);">Calculado pela área exata consumida no rolo de 58cm</div>
+                </div>
+                <span class="font-mono" id="costDtfFraction" style="color: var(--accent-cyan); font-weight: 700;">R$ 10,14</span>
+              </div>
+
+              <div class="cost-row">
+                <span style="color: var(--text-secondary);">Embalagem + Tag Papelão + Seda</span>
+                <span class="font-mono" id="costPackaging">R$ 2,80</span>
+              </div>
+
+              <div class="cost-row">
+                <div>
+                  <span style="color: var(--text-secondary);">Rateio Energia Prensa Térmica</span>
+                  <div style="font-size: 10.5px; color: var(--text-muted);">2.2 kW @ R$ 0,95/kWh ÷ 35 ciclos/hora</div>
+                </div>
+                <span class="font-mono" id="costPressEnergy">R$ 0,45</span>
+              </div>
+
+              <div class="cost-row">
+                <span style="color: var(--text-secondary);">Mão de Obra (Recorte, Prensa e Dobra)</span>
+                <span class="font-mono" id="costLabor">R$ 3,50</span>
+              </div>
+
+              <div class="cost-row total">
+                <span>CPV TOTAL (Custo do Produto Vendido)</span>
+                <span class="font-mono" id="costTotalCPV">R$ 39,39</span>
+              </div>
+
+              <!-- Parâmetros Editáveis da Gráfica -->
+              <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+                <div style="font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary);">Configurações de Fornecedores</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                  <div class="form-group">
+                    <label class="form-label">Custo Metro DTF (Gráfica)</label>
+                    <input type="number" class="form-input" id="inputDtfMeterCost" value="60.00" step="1.0">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Custo Camiseta Lisa</label>
+                    <input type="number" class="form-input" id="inputBlankShirtCost" value="22.50" step="0.5">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CARD 2: SIMULADOR DE MARKUP DIVISOR E PREÇO SUGERIDO -->
+            <div class="markup-simulator-card">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-size: 16px; font-weight: 700; color: var(--text-primary);">SUGESTÃO DE PREÇO (MARKUP DIVISOR)</h2>
+                <span class="badge badge-purple">Margem Segura</span>
+              </div>
+
+              <!-- Hero do Preço Recomendado -->
+              <div class="suggested-price-hero">
+                <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Preço de Venda Recomendado</div>
+                <div class="price-value" id="suggestedSalePrice">R$ 80,37</div>
+                <div style="font-size: 12px; color: var(--accent-cyan);">Sugerido comercial: R$ 79,90 ou R$ 89,90</div>
+              </div>
+
+              <!-- Sliders de Markup -->
+              <div>
+                <div class="form-group">
+                  <div class="form-label">
+                    <span>Margem de Lucro Líquida Alvo</span>
+                    <span id="netMarginValDisplay" class="font-mono" style="color: var(--accent-green); font-weight: 700;">28%</span>
+                  </div>
+                  <input type="range" id="sliderNetMargin" min="15" max="45" value="28">
+                </div>
+
+                <div style="background: var(--bg-card); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-secondary);">Despesas Fixas (Rateio):</span>
+                    <span class="font-mono">12.00%</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-secondary);">Taxas Cartão / Gateway:</span>
+                    <span class="font-mono">4.99%</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--text-secondary);">Impostos (Simples Nacional):</span>
+                    <span class="font-mono">6.00%</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding-top: 6px; border-top: 1px solid var(--border-subtle);">
+                    <strong style="color: var(--text-primary);">Fator Markup Divisor:</strong>
+                    <strong class="font-mono" id="markupDivisorDisplay" style="color: var(--accent-cyan);">0.4901</strong>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Indicadores de Lucro Líquido -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="metric-stat-card">
+                  <span class="label">Lucro Líquido Nominal</span>
+                  <div style="font-size: 18px; font-weight: 800; color: var(--accent-green);" id="netProfitDisplay">R$ 22,50 (28%)</div>
+                </div>
+                <div class="metric-stat-card">
+                  <span class="label">Lucro Bruto (Markup)</span>
+                  <div style="font-size: 18px; font-weight: 800; color: var(--accent-cyan);" id="grossMarginDisplay">R$ 40,98 (51%)</div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ================================================================ -->
+        <!-- MÓDULO 4: PRODUÇÃO, PRENSA E LOGÍSTICA                           -->
+        <!-- ================================================================ -->
+        <section class="module-pane" id="module-production">
+          <div class="production-workflow">
+            
+            <!-- Banner de Lote Inteligente (Batching Térmico) -->
+            <div class="smart-batch-banner">
+              <div>
+                <strong style="color: var(--accent-amber); font-size: 14px;">⚡ Lote Inteligente Ativo: Otimização de Energia da Prensa</strong>
+                <div style="font-size: 12px; color: var(--text-secondary);">Agrupe pedidos pelo mesmo tecido para evitar perda de calor e estabilizar a temperatura da chapa térmica.</div>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-secondary btn-sm" onclick="window.productionService.setBatchFilter('all')">Todos</button>
+                <button class="btn btn-secondary btn-sm" onclick="window.productionService.setBatchFilter('100% Algodão Penteado 30.1')">Algodão (160°C)</button>
+                <button class="btn btn-secondary btn-sm" onclick="window.productionService.setBatchFilter('Poliéster / Dry-Fit')">Poliéster (145°C)</button>
+              </div>
+            </div>
+
+            <!-- KANBAN DE PEDIDOS -->
+            <div class="kanban-board" id="kanbanBoardContainer">
+              <!-- Renderizado dinamicamente via productionService.js -->
+            </div>
+
+            <!-- GABARITO VIRTUAL E FICHA TÉCNICA -->
+            <div class="virtual-placement-container">
+              
+              <!-- Gabarito com régua de alinhamento -->
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                  <strong style="font-size: 13px; color: var(--text-primary);">GABARITO VIRTUAL DE ALINHAMENTO</strong>
+                  <span class="badge badge-cyan">4 Dedos da Gola</span>
+                </div>
+                <div class="shirt-guide-visualizer">
+                  <canvas id="virtualGuideCanvas" width="320" height="380"></canvas>
+                </div>
+              </div>
+
+              <!-- Ficha de Prensagem e Logística -->
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                
+                <div>
+                  <strong style="font-size: 13px; color: var(--text-primary); margin-bottom: 10px; display: block;">FICHA DE PRENSAGEM (RECEITA TÉCNICA)</strong>
+                  <div id="pressRecipeDetails">
+                    <!-- Detalhes térmicos renderizados dinamicamente -->
+                  </div>
+                </div>
+
+                <!-- QR Code de Cuidados e Despacho de Frete -->
+                <div style="background: var(--bg-card); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 14px;">
+                  <div id="washingQrContainer">
+                    <!-- QR Code SVG renderizado aqui -->
+                  </div>
+
+                  <div style="display: flex; gap: 10px; border-top: 1px solid var(--border-subtle); padding-top: 12px;">
+                    <button class="btn btn-secondary btn-sm" onclick="alert('📦 Etiqueta de frete Melhor Envio gerada com sucesso!')">
+                      🏷️ Gerar Etiqueta de Frete
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="window.productionService.sendWhatsAppTracking(window.productionService.selectedOrderId)">
+                      💬 Disparar Rastreio no WhatsApp
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ================================================================ -->
+        <!-- MÓDULO 5: MARKETING, IA E REDES SOCIAIS                          -->
+        <!-- ================================================================ -->
+        <section class="module-pane" id="module-marketing">
+          <div class="marketing-studio">
+            
+            <!-- PREVIEW DO MOCKUP E VÍDEO IA -->
+            <div class="mockup-preview-zone">
+              <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                <div style="display: flex; gap: 6px;">
+                  <button class="btn btn-secondary btn-sm active" id="btnFormat11">1:1 (Feed)</button>
+                  <button class="btn btn-secondary btn-sm" id="btnFormat916">9:16 (Stories/Reels)</button>
+                </div>
+                <span class="badge badge-cyan" id="aiVideoStatusBadge">Mockup Estático</span>
+              </div>
+
+              <div class="mockup-frame" id="mockupFrameContainer">
+                <canvas id="mockupCanvas"></canvas>
+                <!-- HUD Flutuante de Vídeo IA -->
+                <div class="video-timeline-hud" id="videoTimelineHud" style="display: none;">
+                  <div class="hud-top-bar">
+                    <span class="rec-dot-animated"></span>
+                    <span class="hud-model-name" id="hudActiveModelName">TENDÊNCIA: STREETWEAR DROP</span>
+                    <span class="hud-timecode font-mono" id="hudTimecodeDisplay">00:02.14 / 00:05.00</span>
+                  </div>
+                  <div class="hud-progress-track">
+                    <div class="hud-progress-bar" id="videoProgressBarFill"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SELEÇÃO DE TENDÊNCIAS CHAMATIVAS DE VÍDEO (REELS / TIKTOK) -->
+              <div class="video-trends-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <strong style="font-size: 11.5px; color: var(--text-primary);">MODELOS & TENDÊNCIAS VIRAIS (IA MOTION)</strong>
+                  <span class="badge badge-purple" id="badgeTrendTag">Em Alta no TikTok</span>
+                </div>
+                <div class="video-trends-grid">
+                  <button class="trend-card-btn active" data-trend="streetwear">
+                    <div class="trend-icon">⚡</div>
+                    <div class="trend-info">
+                      <span class="trend-title">Streetwear Drop</span>
+                      <span class="trend-sub">Glitch, Neon & Zoom Trap</span>
+                    </div>
+                  </button>
+                  <button class="trend-card-btn" data-trend="lifestyle">
+                    <div class="trend-icon">🚶</div>
+                    <div class="trend-info">
+                      <span class="trend-title">Modelo Urbano</span>
+                      <span class="trend-sub">Passarela & Movimento</span>
+                    </div>
+                  </button>
+                  <button class="trend-card-btn" data-trend="macro">
+                    <div class="trend-icon">🔍</div>
+                    <div class="trend-info">
+                      <span class="trend-title">Macro Zoom 4K</span>
+                      <span class="trend-sub">Textura DTF em Close-up</span>
+                    </div>
+                  </button>
+                  <button class="trend-card-btn" data-trend="spin360">
+                    <div class="trend-icon">🔄</div>
+                    <div class="trend-info">
+                      <span class="trend-title">Vitrine 360°</span>
+                      <span class="trend-sub">Spin Tridimensional Studio</span>
+                    </div>
+                  </button>
+                  <button class="trend-card-btn" data-trend="heatpress">
+                    <div class="trend-icon">🔥</div>
+                    <div class="trend-info">
+                      <span class="trend-title">Prensa Térmica</span>
+                      <span class="trend-sub">Vapor & Revelação Peel</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 10px; width: 100%;">
+                <button class="btn btn-accent" id="btnToggleAiVideo" style="flex: 1; padding: 12px; font-weight: 700;">
+                  ▶ Iniciar Vídeo IA (Kling / Runway)
+                </button>
+                <button class="btn btn-secondary" id="btnDownloadMarketingAsset" title="Salvar mockup em alta resolução">
+                  📸 Salvar Imagem HD
+                </button>
+              </div>
+            </div>
+
+            <!-- PAINEL DE COPYWRITER IA E AGENDADOR -->
+            <div class="ai-copywriter-panel">
+              
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                  <strong style="color: var(--text-primary); font-size: 14px;">COPYWRITER IA (3 ESTILOS DE CONVERSÃO)</strong>
+                  <span class="badge badge-purple">Prompt Otimizado</span>
+                </div>
+                <div id="copywriterOptionsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                  <!-- 3 Opções de Copys renderizadas aqui -->
+                </div>
+              </div>
+
+              <!-- Hashtags -->
+              <div class="tool-block">
+                <div class="tool-block-header">
+                  <span>Hashtags Recomendadas</span>
+                  <span class="badge badge-cyan">Alcance Orgânico</span>
+                </div>
+                <div id="hashtagsDisplay" style="font-size: 11px; color: var(--text-secondary); line-height: 1.5; font-family: 'JetBrains Mono', monospace;"></div>
+              </div>
+
+              <!-- Agendador Meta / TikTok -->
+              <div class="tool-block">
+                <div class="tool-block-header">
+                  <span>Agendador de Redes (Meta & TikTok API)</span>
+                </div>
+                <div id="scheduleCalendarContainer">
+                  <!-- Slots de agendamento renderizados aqui -->
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- Scripts da Aplicação em Ordem de Dependência -->
+  <script src="js/state.js"></script>
+  <script src="js/data/internalTagsPresets.js"></script>
+  <script src="js/services/imageOps.js"></script>
+  <script src="js/services/vectorizer.js"></script>
+  <script src="js/services/vectorStudio.js"></script>
+  <script src="js/services/viewportController.js"></script>
+  <script src="js/services/aiCopilot.js"></script>
+  <script src="js/services/mockupEngine.js"></script>
+  <script src="js/services/imageEngine.js"></script>
+  <script src="js/services/gangSheetNesting.js"></script>
+  <script src="js/services/costCalculator.js"></script>
+  <script src="js/services/productionService.js"></script>
+  <script src="js/services/marketingService.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Vector test</title>
+<style>
+  body { margin:0; background:#1b1d24; color:#ddd; font:13px monospace; }
+  .row { display:flex; gap:8px; padding:8px; }
+  .cell { flex:1; min-width:0; }
+  .cell h3 { margin:0 0 4px; font-size:12px; color:#7fe; }
+  .box { background:#0e0f13; border:1px solid #333; position:relative; }
+  .box svg, .box canvas { width:100%; height:auto; display:block; }
+  #log { padding:8px; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="cell"><h3>ORIGINAL (arte sintética, antialiasing)</h3><div class="box" id="orig"></div></div>
+  <div class="cell"><h3>VETORIZADOR ANTIGO (ImageOps.vectorize)</h3><div class="box" id="old"></div></div>
+  <div class="cell"><h3>NOVO (VectorEngine)</h3><div class="box" id="neu"></div></div>
+</div>
+<div id="log"></div>
+<script src="../js/services/imageOps.js"></script>
+<script src="../js/services/vectorizer.js"></script>
+<script>
+function makeArt() {
+  const W = 1000, H = 1100;
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  x.lineJoin = "round";
+  // --- esquerda: capacete vermelho
+  x.fillStyle = "#e8212a";
+  x.beginPath(); x.moveTo(500, 40); x.bezierCurveTo(330, 20, 150, 140, 130, 420);
+  x.bezierCurveTo(120, 700, 170, 900, 260, 1100); x.lineTo(500, 1100); x.closePath(); x.fill();
+  // placa amarela
+  x.fillStyle = "#f6d00d";
+  x.beginPath(); x.moveTo(260, 220); x.lineTo(430, 160); x.lineTo(500, 160); x.lineTo(500, 700);
+  x.lineTo(430, 640); x.lineTo(240, 880); x.lineTo(220, 520); x.closePath(); x.fill();
+  // marrom
+  x.fillStyle = "#a9722b";
+  x.beginPath(); x.moveTo(330, 640); x.lineTo(500, 560); x.lineTo(500, 920); x.lineTo(300, 960); x.lineTo(250, 800); x.closePath(); x.fill();
+  // olho branco
+  x.fillStyle = "#f4f9ff";
+  x.beginPath(); x.moveTo(330, 760); x.lineTo(500, 790); x.lineTo(490, 840); x.lineTo(310, 820); x.closePath(); x.fill();
+  // hachuras escuras (preto) -> transparência: apagamos com destination-out
+  x.globalCompositeOperation = "destination-out";
+  x.lineWidth = 6;
+  for (let i = 0; i < 9; i++) { x.beginPath(); x.moveTo(300 + i * 20, 660 + i * 6); x.lineTo(430 + i * 8, 600 + i * 22); x.stroke(); }
+  // contorno central + frestas
+  x.lineWidth = 10; x.beginPath(); x.moveTo(500, 0); x.lineTo(500, 1100); x.stroke();
+  x.lineWidth = 9; x.beginPath(); x.moveTo(250, 220); x.bezierCurveTo(300, 120, 420, 90, 500, 120); x.stroke();
+  x.globalCompositeOperation = "source-over";
+  // --- direita: capuz verde
+  x.fillStyle = "#0b6b3a";
+  x.beginPath(); x.moveTo(510, 40); x.bezierCurveTo(700, 0, 820, 120, 860, 400);
+  x.bezierCurveTo(900, 700, 870, 900, 840, 1100); x.lineTo(510, 1100); x.closePath(); x.fill();
+  // borda clara do capuz
+  x.strokeStyle = "#3aa660"; x.lineWidth = 12;
+  x.beginPath(); x.moveTo(520, 230); x.bezierCurveTo(640, 220, 700, 300, 740, 420); x.stroke();
+  // crânio cinza
+  x.fillStyle = "#7d8186";
+  x.beginPath(); x.moveTo(520, 260); x.bezierCurveTo(650, 250, 700, 380, 690, 520);
+  x.bezierCurveTo(690, 700, 640, 860, 600, 1100); x.lineTo(520, 1100); x.closePath(); x.fill();
+  // buracos (olhos)
+  x.globalCompositeOperation = "destination-out";
+  x.beginPath(); x.ellipse(580, 480, 28, 22, 0, 0, Math.PI * 2); x.fill();
+  x.beginPath(); x.ellipse(610, 330, 70, 30, 0.3, 0, Math.PI * 2); x.fill();
+  x.lineWidth = 8; x.beginPath(); x.moveTo(530, 600); x.bezierCurveTo(580, 560, 640, 600, 670, 640); x.stroke();
+  x.globalCompositeOperation = "source-over";
+  // linhas finas: relâmpago azul + rastro verde neon
+  x.strokeStyle = "#4e9ad6"; x.lineWidth = 7;
+  x.beginPath(); x.moveTo(80, 300); x.lineTo(130, 420); x.lineTo(110, 520); x.lineTo(210, 640); x.lineTo(330, 700); x.stroke();
+  x.lineWidth = 5; x.beginPath(); x.moveTo(20, 600); x.lineTo(160, 620); x.lineTo(260, 740); x.stroke();
+  x.strokeStyle = "#5fc83a"; x.lineWidth = 9;
+  x.beginPath(); x.moveTo(560, 760); x.bezierCurveTo(660, 700, 760, 760, 900, 660); x.stroke();
+  x.fillStyle = "#5fc83a"; x.beginPath(); x.arc(560, 770, 22, 0, Math.PI * 2); x.fill();
+  return c;
+}
+const log = (s) => document.getElementById("log").textContent += s + "\n";
+(async () => {
+  try {
+    const art = makeArt();
+    document.getElementById("orig").appendChild(art);
+    let t0 = performance.now();
+    const old = ImageOps.vectorize(art, { colors: 14, maxSide: 900 });
+    log("ANTIGO : " + Math.round(performance.now() - t0) + " ms  " + JSON.stringify(old.stats));
+    document.getElementById("old").innerHTML = old.svg;
+    t0 = performance.now();
+    const sess = new VectorEngine.Session(art, {});
+    const r = sess.run();
+    log("NOVO   : " + Math.round(performance.now() - t0) + " ms  " + JSON.stringify(r.stats) + "  work=" + r.w + "x" + r.h);
+    document.getElementById("neu").innerHTML = r.svg;
+    log("paleta : " + r.palette.map(c => c.hex + "(" + c.count + ")").join(" "));
+    window.__done = true;
+  } catch (e) { log("ERRO: " + e.stack); }
+})();
+</script>
+</body>
+</html>
+
